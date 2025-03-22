@@ -1,0 +1,396 @@
+# Artificial Neural Networks
+
+### Biological neurons
+
+A major inspiration for artificial neural networks (ANNs) are biological neurons
+(nerve cells), based on the rationale that since there exist objects in nature
+that exhibit intelligence and are composed of neurons, it may be feasible to use
+artificial neurons to compose intelligent systems from them.
+
+In the vast majority of cases, neurons consist of dentrites that are connecting
+other neurons' axons to the soma (cell body), which does or does not create an
+activation signal that gets transmitted by the axon to other neurons' dendrites.
+The connection between one neuron's axon and another neuron's dendrite is a
+small gap called the synapse.
+
+
+### Statistics
+
+In applicability, neural networks cover the whole field of machine learning.
+Neural networks as a whole can be considered general function approximators.
+The difficulties lie in finding appropriate models (network configurations)
+for a given task, and training them efficiently. Aside from being limited in
+memory, ANNs of certain structure have been shown to be Turing-complete.
+
+
+### Early neuron models
+
+Neural networks consist of units that have
+* one or more inputs x_i
+* an activation function
+* an output
+
+Historically, the McCulloch-Pitts cell has started the field of neural networks.
+It
+* processes binary signals, outputting binary signals
+* has one or more excitatory inputs
+* has zero or more inhibitory inputs
+* has a threshold value theta
+* uses the activation function:
+  * 0 if any inhibitory input is 1
+  * 0 if the sum of excitatory inputs is < theta
+  * 1 otherwise
+* can be used to build networks that implement boolean algebra
+* isn't used by anybody interested in machine learning.
+
+The next step were perceptrons (Frank Rosenblatt, 1958), which
+* have real-value inputs x_i
+* have a real-value weight per input w_i
+* have a bias value b
+* use the Heaviside Step function as activation function:
+  H(x) = 1 if x > 0, otherwise 0
+* have a binary output y
+* are computed y = H(x * w + b)
+* can make the bias a weight of the bias input with constant input 1, making
+  the learning equations more compact, and y = H(x * w)
+* implement a linear separation of the input space, with the bias moving the
+  decision boundary away from the origin
+
+To visualize the functioning of a single perceptron, imagine a 2D plane with
+data points of two classes strewn about them. If a line can be drawn between
+them, they are linearly separable. The line is the decision boundary, separating
+the space into two half-spaces, one for class 0 and one for class 1. The
+perceptron will, when given a new data point, predict the class of the point as
+the class of the half-space that it is in.
+
+Another equally valid interpretation is to consider the perceptron as a two-step
+process of
+* an affine transformation: The input space gets rotated, scaled, sheared and
+  (if a bias input is present) translated (moved) into an intermediate space
+* the activation function, which is static to the intermediate space; In case of
+  the Heaviside function, it's the top right halfspace, and the decision
+  boundary is running from the top left to the bottom right.
+
+This holds true for higher-dimensional spaces as well; A perceptron divides an
+n-dimensional space along an (n-1)-dimensional hyperplane into two half-spaces.
+
+A shortcoming of perceptrons is that a single one can not implement functions
+that separate spaces non-linearly, making it incapable of learning e.g. the XOR
+function.
+
+Many variations of the perceptron have been developed and fallen by the wayside.
+It has also motivated the research of Support Vector Machines. Its
+generalization (using arbitrary activation functions, and from here on called
+neuron) is the basis for modern neural networks (most of the time).
+
+
+### Learning by gradient descent
+
+The neuron's weights must be determined somehow, and as we won't be able to draw
+the decision boundaries for complex problems by hand, it has to be done
+algorithmically. This is what places neural networks into the domain of Machine
+Learning.
+
+The classic algorithm for perceptron learning (which I will skip here)
+* is guaranteed to converge
+  * on an optimal solution for the decision boundary
+  * in bounded time
+  if the classes are indeed linearly separable
+* will fail completely if they are not.
+
+This will obviously not suffice for real-world problems. We drop the guarantee
+for linear separability and settle for getting a decision boundary that
+approximates an optimal solution better or worse. We express how good a solution
+is as a loss function L. We calculate the loss by feeding an example into the
+neuron and comparing the output y^ that it does give with the output y that it
+should give. Some examples are
+* mean square error (L2 norm): Square error per example, divided by the number
+  of examples; Obvious, but has fallen out of favor.
+* mean absolute error (L1 norm, Manhattan distance): Sum of the absolute
+  diffences, divided by the number of examples; FIXME: Does anybody use it? Why?
+* cross-entropy: Used for classification (binary and multiclass)
+* FIXME: What about regression?
+* Wasserstein metric ("Earth-mover distance"): used in GANs
+
+As discussed above, the values of the neuron's weight determine where the
+decision boundary is at, and with that, the neuron's loss. Accordingly, you can
+visualize the loss for every point in the space of the weights. For the 2D space
+of input data / output classes that we have used before, the error space would
+be three dimensional; one for each data input and one for the bias input. So
+let's simplify even further. Let's say we have a 1D input vector, and the
+neuron's functionality thus boils down to "Is the input times its weight greater
+than the bias weight?" The error space thus has two dimensions. The error can be
+visualized as a heat map, or a height map in a third dimension. These maps show
+* where (at which weight values) the minimum of the loss function is positioned
+* what the difference in error between any two points (sets of weight values)
+  is.
+The former is the goal that we hope to find. The latter is how we find out where
+to go to get closer to that goal. To do that, we estimate the local steepness of
+the error curve, called gradient, then adjust the weights along the local
+downward slope. This moves the decision boundary, and we find ourselves in a
+new situation from which we can repeat the process. This is called gradient
+descent.
+
+Gradient Descent
+* has a learning rate that determines how far each correction will take it,
+  which
+  * can lead to overcorrection if it is too high
+  * can lead to slow convergence if it is too low
+* approximates the gradient of the loss function
+* adjusts a neuron's weights by adding the negative gradient (to minimize
+  instead of maximize) times the learning rate
+* will find an optimal solution on a convex error surface
+* may converge towards local minima or saddle points (around which the gradient
+  becomes 0) on non-convex surfaces
+
+Gradient Descent forms the basis for algorithms that modify different details to
+improve its learning properties.
+* Speed: Instead of processing the whole data set each learning step (batch), an
+  update can be done based on
+  * single values: Stochastic Gradient Descent (SDG)
+    * much faster than batch Gradient Descent
+    * high variance of loss
+      * draws out ultimate convergence to the local minimum, slowing learning,
+        but also allows to break out of local minima of smaller regions of the
+	error surface
+    * shows the same convergence behavior as batch Gradient Descent if the
+      learning rate is reduced appropriately during learning
+  * mini-batches: Also often called SDG, this
+    * processes usually 50-256 examples each learning step
+    * middle ground between batch and single value
+    * the most popular approach
+* Navigating ravines: If there is an minimum region in the error surface that is
+  very narrow in one dimension, SDG may keep overshooting the minimum back and
+  forth, slowing convergence and movement along other axes. This can be solved
+  by using
+  * Momentum: Each learning step, the correction of the previous learning step
+    times a decay factor lambda (typically 0.9) is applied again.
+  * Nesterov Accelerated Gradient:
+    * significantly increases performance on RNNs
+* Adaptive learning rates (AdaGrad)
+
+
+### Deep networks and backpropagation
+
+So far we have concerned ourselves with single neurons and linearly separable
+classes. The limitation of linearity can be overcome by Multilayer Perceptrons
+(MLP), which
+* are built from layers, each
+  * consisting of a set of neurons that work in parallel
+  * having the neuron's inputs connected to the outputs of the previous layer
+* feed the input through the network (feed forward)
+* can model complex decision boundaries, with layers refining results from the
+  layers below them
+
+By feeding an example forward through the network, we can find its current
+prediction. By feeding the gradient backward through it, we can adjust its
+weights towards more promising values. To work with multiple layers of neurons,
+we now need to feed the gradients backward through them, so we can continue to
+train individual neurons as before. This is called backpropagation.
+
+
+# Unprocessed Notes
+
+### Problems with neural networks
+
+* Vanishing Gradient Problem
+  https://en.wikipedia.org/wiki/Vanishing_gradient_problem
+* Exploding Gradient Problem
+
+
+### Optimizers
+
+* Overview: https://arxiv.org/abs/1609.04747
+* Details on Adam: https://machinelearningmastery.com/adam-optimization-algorithm-for-deep-learning/
+
+
+### Activation Functions
+
+* Linear
+  * f(x) = x
+  * Not really useful, as it doesn't introduce non-linearity
+* Heaviside step function
+* Sigmoid / Logistic function
+  * fixes that step function is not differentiable and has 0 gradient
+  * f(x) = ...?
+  * Values are [0,1], f(0) = 0.5
+  * Similar: tanh, values are [-1,1]
+  * saturates in both directions, causing the vanishing gradient problem
+* Rectified Linear Unit (ReLU)
+  * f(x) = x if x>=0, 0 otherwise
+  * has become the standard deep learning activation function.
+  * suffers less from the vanishing gradient problem, as it doesn't saturate in
+    the positive
+  * suffers from Dying ReLU in the negative, as gradient = 0
+  * Variants:
+    * Noisy ReLU: Input variable is Gauss-noised before processing
+    * Leaky ReLU: Small, positive gradient for negative numbers
+      * f(x) = 0.01x for x<0, x otherwise
+      * fixes Dying ReLU problem.
+    * Parametric ReLU: leaky ReLU with learned gradient.
+    * ELU
+      * ReLU with a*e^x - 1 in x < 0
+      * can obtain higher classification accuracy than ReLUs
+    * Softplus: A smoother ReLU without discontinuities. Turned out to not have
+      a significant advantage over standard ReLUs.
+* Tobit model: FIXME
+  https://en.wikipedia.org/wiki/Tobit_model
+* Softmax
+  * f(x): Every element e^x, then normalization v = v / sum(v)
+  * Values are [0,1], sum of vector elements is 1
+  * useful for class selection with a confidence measure.
+
+
+### Layers
+
+* Convolution
+  * Ubiquitous in image processing, but also applicable in other areas like
+    sound or NLP
+* Dropout
+  * Each neuron has during each training step a random chance to output 0
+  * Forces separation of per-layer learning
+  * Makes the network more robust
+  * is a regularization approach
+* Filtering
+  * Apply a feature (kernel) to the input
+  * Hyperparameters: Number and size of features
+* Normalization
+  * Replace all negative values by 0.
+  * i.e. ReLU
+* Max pooling
+  * Take a window (usually 2x2 or 3x3) and move it over the input in a stride
+    (usually 2), each time taking the maximum value in the image as the output
+    value.
+  * Makes data more compact
+  * Makes result less sensitive to position
+  * Hyperparameters: Window size and window stride
+* Fully Connected Layers
+  * For voting for the end result
+  * Can be hidden layers, too
+  * Hyperparameters: Number of neurons
+
+
+### Architectures
+
+* Recurrent
+  Output gets fed back into input in next time step.
+  Many models mentioned, LSTM/GRU explained:
+  https://colah.github.io/posts/2015-08-Understanding-LSTMs/
+  * (basic recurrent unit)
+  * LSTM: Long-short term memory
+    Hochreiter & Schmidhuber, 1997
+    Deals with the exploding and vanishing gradient problems.
+    remembered = cell_state o sigmoid([
+    Extensions:
+    * Forget gate (1999, Felix Gers)
+    * peephole connections (from the cell to the gates), omit output activation
+      function (Felix Gers & Jürgen Schmidhuber, 2000)
+  * GRU: Gated Recurrent Unit
+    Kyunghyun Cho et al., 2014
+    Simplified LSTM
+  * Bidirectional RNN (BRNN)
+  * Attention model
+    Babdanau et al., 2014
+    Extends BRNN
+
+
+### Policy gradient methods
+
+* Comes in three flavors, determining the Policy Objective Function to choose
+  * Episodic environment: The start state is always the same.
+  * Continuing environment, optimizing the overall reward
+  * Optimizing the average reward per time step
+* Can be a stochastic Policy
+  * Includes randomness
+  * If state aliasing occurs (there are different states with the same feature
+    vector), a stochastic policy does better than a deterministic one.
+
+Policy Gradient Function
+* Advantages
+  * Better convergence properties.
+  * No maximum reward needs to be determined.
+  * Effective in high-dimensional or continuous action spaces
+  * Can learn stochastic policies, adding randomness to policy decisions.
+* Disadvantages
+  * Typically converge at local minima
+  * May be expensive to evaluate
+* Work on value function, policy function, or both.
+  * value function only: value-based
+  * policy only: policy-based
+  * Both: Actor-Critic
+
+
+### Types of Networks
+
+Hopfield Network
+MLP: Multi-Layer Perceptron
+GAN: Generative-Adversarial Networks
+Residual networks (ResNets): 
+
+
+### Hopfield Networks
+
+* They're the inspiration for RBMs.
+* are based more on quantum spin systems than neurons
+* process binary input, i.e. {0, 1} or {-1, 1}
+* have N neurons
+* are fully connected with weights w_ij for neurons i, j
+  * w_ii = 0
+  * w_ij = w_ji
+* use a step activation function
+* are trained using the Hopfield algorithm
+* are used by
+  * initializing the nodes with the input states
+  * letting the network run until it converges when next state is the same as
+    the one before.
+    * If the capacity is too low (ca. 0.145 patterns per neuron), oscillation
+      may occur.
+  * using the neuron outputs as network output
+
+Thus, a Hopfield network with N neurons maps a binary vector with N elements to
+another vector with N elements.
+
+
+### Restricted Boltzmann Machines (RBM)
+
+* are an evolution of Hopfield networks proposed by Hinton, Sejnowski, Ackley
+* consist of input, hidden, and output layer
+* are trained using Contrastive Divergence
+
+
+### Deep Belief Networks
+
+* consist of stacked layers of RBMs
+* are falling out of favor for GANs and VAEs
+* still offer interesting applications (see Hinton's talk at Google)
+
+
+### Generative Adversarial Models (GAN)
+
+* Goodfellow et al., 2014
+* are an actor-critic architecture
+* are used to create data similar to a training set from random noise
+* have an (actor) generator network that maps a vector of noise to instances of
+  the type of data in the training set
+* have a (critic) discriminative network that classifies input as fake or not
+  fake (with respect to being in the training data)
+* are trained by alternatingly
+  * training the discriminator on the real data and an equal amount of data
+    created by the generator
+  * training the generator to create data that will be accepted by the
+    discriminator as authenti
+* have, together with variational autoencoders, begun to replace Deep Belief
+  Networks
+* Tips on constructing / training GANs:
+  * https://github.com/soumith/ganhacks
+  * https://arxiv.org/pdf/1701.04862.pdf
+* Variations:
+  * Deep Convolutional GAN (DCGAN)
+    * https://medium.com/@jonathan_hui/gan-dcgan-deep-convolutional-generative-adversarial-networks-df855c438f
+  * Least Squares GAN (LSGAN)
+    * https://medium.com/@jonathan_hui/gan-lsgan-how-to-be-a-good-helper-62ff52dd3578
+  * Wasserstein GAN (WGAN)
+    * https://medium.com/@jonathan_hui/gan-wasserstein-gan-wgan-gp-6a1a2aa1b490
+    * https://lilianweng.github.io/lil-log/2017/08/20/from-GAN-to-WGAN.html
+  * Progressive Growing GAN
+    * https://machinelearningmastery.com/introduction-to-progressive-growing-generative-adversarial-networks/
